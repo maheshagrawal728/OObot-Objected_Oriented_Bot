@@ -1,0 +1,76 @@
+- name: tasks
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  tasks:
+  - name: provisioning EC2
+    ec2:
+     key_name: ravi_ec2
+     aws_access_key: xxxxxxxxxxxxxxxxxx
+     aws_secret_key: yyyyyyyyyyyyyyyyyyyyyyyyyyy
+     instance_type: t2.micro
+     region: us-east-1
+     image: ami-c8580bdf
+     vpc_subnet_id: subnet-42287568
+     wait: yes
+     count: 1
+     assign_public_ip: yes
+     wait: yes
+     wait_timeout: 660
+     instance_tags: Name="SE Project OObot"
+    register: ec2
+  - debug: msg={{ec2.instances[0].public_ip}}
+  - name: SSH Group creation
+    add_host:
+     hostname: "{{ec2.instances[0].public_ip}}"
+     groupname: EC2_SE
+     ansible_ssh_user: ubuntu
+     ansible_ssh_private_key_file: ./ravi_ec2.pem
+  - name: SSH bringup
+    wait_for:
+     host:"{{ec2.instances[0].public_ip}}"
+     port:22
+     state:started
+- name: EC2 Setup and Tasks
+  hosts: EC2_SE
+  sudo: yes
+  remote_user: ubuntu
+  gather_facts: yes
+  environment:
+   SLACK_BOT_TOKEN: "yyyyyyyyyyyyyyxxxxxxxxxxxxxxxx"
+   BOT_ID: "aaaaaaaaaaaaa"
+   GITHUBTOKEN: "123123123123123123"
+  tasks:
+   - name: Install git, pip, nodejs, npm
+     apt: pkg={{item}} state=present update_cache=true cache_valid_time=3600
+     with_items:
+          - git
+          - python-pip
+          - nodejs
+          - npm
+   - name: Link node to nodejs
+     command: ln -sf /usr/bin/nodejs /usr/bin/node
+   - name: Install forever
+     npm: name=forever state=present global=yes
+   - name: Copy ssh public key for git clone
+     copy: src={{ lookup('env','HOME') }}/.ssh/id_rsa.pub
+           dest=/home/ubuntu/.ssh/id_rsa.pub
+           mode=0644
+   - name: Copy ssh private key for git clone
+     copy: src={{ lookup('env','HOME') }}/.ssh/id_rsa
+           dest=/home/ubuntu/.ssh/id_rsa
+           mode=0600
+   - name: Clone project Repo from github
+     git: repo=git@github.ncsu.edu:Madi/OObot.git dest=/home/ubuntu/OObot
+          accept_hostkey=true
+          key_file=/home/ubuntu/.ssh/id_rsa
+   - name: Install virtualenv
+     pip: name=virtualenv
+   - name: Setup virtualenv for starterbot
+     command: virtualenv starterbot
+   - name: Install slackclient in virtualenv
+     command: /home/ubuntu/starterbot/bin/pip install slackclient
+   - name: Start bot server
+     command: chdir=/home/ubuntu/OObot/code/ {{ item }}
+     with_items:
+     - forever start -c /home/ubuntu/starterbot/bin/python starterbot.py
