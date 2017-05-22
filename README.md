@@ -1,7 +1,10 @@
 # OObot---Objected-Oriented-Bot
 A Python bot (Slackbot) that provides starter template code for a design pattern, either from the Bot’s repository or from GitHub’s store, based on User’s request– implemented using GitHub APIs
 
-# [Screencast](https://www.youtube.com/watch?v=KKupHeuscwo)
+## ScreenCast 
+
+#### [A 3 minute summary of the Bot](https://www.youtube.com/watch?v=KKupHeuscwo)
+#### [Demo of the Bot](https://www.youtube.com/watch?v=o9J6Zlc6VDw)
 
 ## Problem statement:
 
